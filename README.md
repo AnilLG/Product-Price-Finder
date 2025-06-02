@@ -21,5 +21,5 @@ Make sure you have Python 3.10+ installed.
 Install dependencies:
 
 ```bash
-pip install streamlit langchain_groq pydantic python-dotenv
+pip install streamlit langchain_groq pydantic python-dotenv langchain_google_genai
 
