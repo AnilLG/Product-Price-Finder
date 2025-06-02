@@ -17,7 +17,7 @@ class Product(BaseModel):
     product_desc: Optional [str] = Field(default=None, description="Product description")
     product_price: Optional[float] = Field(default=None, ge=0, description="It represents the price of the product")
     category: Optional[str] = Field(default=None, description="It spcified the category of the product")
-    rating: Optional[int] = Field(default=0.0, ge=0, le=5, description="Rating the product")
+    rating: Optional[int] = Field(default=0.0, ge=0, le=5, description="Rating of the product in between 0 to 5")
 
 # 2. Build the prompt
 system_prompt = """
