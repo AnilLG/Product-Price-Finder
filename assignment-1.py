@@ -1,74 +1,58 @@
 import streamlit as st
-from dotenv import load_dotenv
-from typing import Optional
 from pydantic import BaseModel, Field
-from langchain_groq import ChatGroq
+from typing import Optional
 from langchain.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
+from dotenv import load_dotenv
 
 # Load Groq API key
 load_dotenv()
 
-
-# Product Model
+# 1. Define the Product entites or characerstics 
 class Product(BaseModel):
-    product_id: Optional[str] = Field(
-        default=None,
-        description="Unique idenitfier for the product(product number)",
-    )
-    product_name: Optional[str] = Field(
-        default=None, description="The name of the product"
-    )
-    description: Optional[str] = Field(
-        default=None,
-        description="Brief description or key features of the product",
-    )
-    tentative_price_in_usd: Optional[str] = Field(
-        default=None, description="Price of the product in USD"
-    )
-    category: Optional[str] = Field(
-        default=None,
-        description="Product category such as electronics, clothing, etc.",
-    )
-    rating: Optional[float] = Field(
-        default=None,
-        ge=0,
-        le=5,
-        description="Average customer rating (0 to 5)",
-    )
+    
+    product_id: Optional[str] = Field(default=None, description="Unique identifier for the product")
+    product_name: Optional[str] = Field(default=None, description="Name of the product")
+    product_desc: Optional [str] = Field(default=None, description="Product description")
+    product_price: Optional[float] = Field(default=None, ge=0, description="It represents the price of the product")
+    category: Optional[str] = Field(default=None, description="It spcified the category of the product")
+    rating: Optional[int] = Field(default=0.0, ge=0, le=5, description="Rating the product")
 
+# 2. Build the prompt
+system_prompt = """
+You are a helpful assistant with deep domain knowledge in product analysis and pricing.When the user gives about any product details.
+Provide the below details of the given product:
+1. **Product Name**
+2. **Product Price** /Please added "$" prefix to the product price.
 
-# Prompt template with system and human messages
+Note: Return valid and structured information only
+"""
 prompt = ChatPromptTemplate.from_messages(
     [
-        (
-            "system",
-            (
-                "You are a helpful assistant with deep domain knowledge in"
-                " product analysis and pricing. When the user gives about any"
-                " product details, provide\n1. The **Product Name** \n2. The"
-                " **Tentative Product Price in USD**.\n\nOnly return valid and"
-                " structured information."
-            ),
-        ),
-        ("human", "{input}"),
+        ("system",(system_prompt)),
+        ("human",f"{input}")
     ]
 )
 
-# Streamlit UI
-st.set_page_config(page_title="🛍️ Product Assistant", page_icon="🛒")
-st.title("🛍️ Product Price Finder Assistant")
+# building the streamlit UI
 
-st.markdown(
-    "Welcome to the **Product Assistant App** powered by **Groq LLMs +"
-    " LangChain** 🎯"
-)
+st.set_page_config(page_title="🛍️ Prduct Price Finder", page_icon="🛒")
+st.title("🛍️ Product Price Finder Bot")
+st.markdown("Welcome to the **Price Finder App** with the help of **Google Gemini and LangChain**")
 
-# Column layout
-col1, col2 = st.columns([1, 2])
+col1, col2 = st.columns(2)
 
+# 3. Choose LLM model
 with col1:
-    st.markdown("### 🤖 Select LLM Model")
-    model_options = [
+    # st.markdown("Model")
+    # available_models = [
+    #     "gemini-2.0-flash",
+    #     "gemini-2.5-pro-preview-05-06",
+    #     "gemini-2.0-flash-lite",
+    #     "gemini-1.5-pro"
+    # ]
+    available_models = [
         "deepseek-r1-distill-llama-70b",
         "qwen-qwq-32b",
         "llama-3.1-8b-instant",
@@ -78,34 +62,34 @@ with col1:
         "groq-llama-2-70b-chat",
         "groq-llama-13b-chat",
     ]
-    model_choice = st.selectbox("Choose a Groq-hosted model:", model_options)
+
+    model_choice = st.selectbox("**Choose Model**", options=available_models)
 
 with col2:
-    st.markdown("### ✏️ Enter Product Description")
-    product_input = st.text_area(
-        "Describe the product below:",
-        placeholder=(
-            "e.g., A lightweight wireless headphone with noise cancellation"
-        ),
+    # st.markdown("Product description")
+    product_input = st.text_area("**Enter product description:**",
+        placeholder = ("Let me know the brief description of the product")
     )
 
-# Run prediction
-if st.button("🎯 Get Product Info"):
-    if product_input and model_choice:
-        with st.spinner("Thinking... 🤖"):
+# 4. Execution
+if st.button("Get Details"):
+    if model_choice and product_input:
+        with st.spinner("Thinking..."):
+            # model = ChatGoogleGenerativeAI(model=model_choice)
             model = ChatGroq(model=model_choice)
             structured_output = model.with_structured_output(Product)
+
+            # Create a chain
             chain = prompt | structured_output
 
             try:
-                result = chain.invoke({"input": product_input})
-                st.success("✅ Prediction Successful!")
-                st.markdown(f"### 🧾 Result")
+                result = chain.invoke({"input":product_input})
+                
+                st.success("Execution Successfully Completed")
+                st.markdown(f"### Result:")
                 st.write(f"**Product Name:** {result.product_name}")
-                st.write(
-                    f"**Estimated Price:** ${result.tentative_price_in_usd}"
-                )
+                st.write(f"**Price:** ${result.product_price}")
             except Exception as e:
                 st.error(f"❌ Error: {e}")
     else:
-        st.warning("⚠️ Please provide both product description and model.")
+        st.warning(f"⚠️ Please choose the model and give us the product description as well.")
